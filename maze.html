@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>maze</title>
+    <style>
+
+        body {
+        @include display(flex);
+        @include align-content(center);
+            color: #353535;
+            min-height: 100vh;
+            font-family: 'Open Sans', sans-serif;
+            font-size: 4px;
+            text-align: center;
+            background-color: lightgreen;
+            margin: 0 auto;
+            overflow: hidden;
+
+        }
+
+        #web-gl {
+            height: 100%;
+            width: 100%;
+        }
+
+    </style>
+
+
+</head>
+<body>
+<script src="lib/three.js"></script>
+<script src="lib/FirstPersonControls.js"></script>
+<script src="lib/Detector.js"></script>
+<script type="text/javascript" src="lib/TrackballControls.js"></script>
+<script src="js/THREEx.KeyboardState.js"></script>
+
+
+<div id="web-gl"></div>
+
+<script>
+    var container;
+    var camera, controls, scene, renderer;
+    var light, ambientLight;
+    var audioLoader;
+    var lastCameraPosition =[];
+
+    var sphereGeometry;
+    var sphereX, sphereY, sphereZ;
+    var material_sphereX, material_sphereY, material_sphereZ;
+
+    var soundX, soundY, soundZ;
+    var keyboard = new THREEx.KeyboardState();
+
+    var delta;
+    var clock = new THREE.Clock();
+var heroz;
+    var collidableMeshList = [];
+
+
+    init();
+    animate();
+
+    function init() {
+
+        //  Add the output of the renderer to the html element
+        container = document.getElementById("web-gl");
+
+        scene = new THREE.Scene();
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
+
+        //  Surface
+        var texture = new THREE.TextureLoader().load( "texture/desert-texture2.jpg" );
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set( 1, 1 );
+        var walltexture = new THREE.TextureLoader().load( "texture/Brick-Texture.jpg" );
+        walltexture.wrapS = THREE.RepeatWrapping;
+        walltexture.wrapT = THREE.RepeatWrapping;
+        walltexture.repeat.set( 100, 5 );
+        var surface = new THREE.PlaneGeometry(1000,1000,100,100);
+        var surfaceMaterial = new THREE.MeshBasicMaterial({color: 0xcccccc, side: THREE.DoubleSide,  map: texture});
+        var surfaceMesh = new THREE.Mesh(surface, surfaceMaterial);
+        surfaceMesh.rotateX(Math.PI / 2);
+        surfaceMesh.position.y = -20;
+        scene.add(surfaceMesh);
+        //add cube
+        var hero = new THREE.BoxGeometry(15,15,15,1,1,1);
+        var geometrywall1 = new THREE.BoxGeometry(100,50,5,1,1,1);
+        var geometrywall2 = new THREE.BoxGeometry(200,50,5,1,1,1);
+        var geometrywall3 = new THREE.BoxGeometry(300,50,5,1,1,1);
+        var geometrywall4 = new THREE.BoxGeometry(400,50,5,1,1,1);
+        var geometrywall5 = new THREE.BoxGeometry(500,50,5,1,1,1);
+        var geometryGreatWall = new THREE.BoxGeometry(1000,50,10,1,1,1);
+        var heroMaterial = new THREE.MeshBasicMaterial( {color: 0xffffff , side: THREE.DoubleSide} );
+        var wallMaterial = new THREE.MeshBasicMaterial( {color: 0x333333 , side: THREE.DoubleSide,  map: walltexture } );
+        var wallMaterialIn = new THREE.MeshBasicMaterial( {color: 0x663300 , side: THREE.DoubleSide} );
+        var wallMaterialInVer = new THREE.MeshBasicMaterial( {color: 0xff0000 , side: THREE.DoubleSide} );
+        var wallL = new THREE.Mesh( geometryGreatWall, wallMaterial );
+        var wallR = new THREE.Mesh( geometryGreatWall, wallMaterial );
+        var wallT = new THREE.Mesh( geometryGreatWall, wallMaterial );
+        var wallD = new THREE.Mesh( geometryGreatWall, wallMaterial);
+
+        //4 side of maze
+        wallL.position.z=-500;
+        wallR.position.z=500;
+        wallT.rotation.y = Math.PI / 2;
+        wallD.rotation.y = Math.PI / 2;
+        wallT.position.x=-500;
+        wallD.position.x=500;
+        scene.add( wallL,wallR,wallT,wallD);
+
+        //Horizontal walls from top to down // left ro right
+        var wallH11 = new THREE.Mesh( geometrywall3 ,wallMaterialIn);
+        var wallH12 = new THREE.Mesh( geometrywall2 ,wallMaterialIn);
+        wallH11.position.z=400;
+        wallH11.position.x=250;
+        wallH12.position.z=400;
+        wallH12.position.x=-200;
+        scene.add( wallH11,wallH12);
+
+        var wallH21 = new THREE.Mesh(geometrywall2 ,wallMaterialIn);
+        var wallH22 = new THREE.Mesh(geometrywall2 ,wallMaterialIn);
+        wallH21.position.z=300;
+        wallH21.position.x=400;
+        wallH22.position.z=300;
+        wallH22.position.x=-400;
+        scene.add( wallH21,wallH22);
+
+        var wallH31 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        var wallH32 = new THREE.Mesh(geometrywall3,wallMaterialIn);
+        var wallH33 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        wallH31.position.z=200;
+        wallH31.position.x=250;
+        wallH32.position.z=200;
+        wallH32.position.x=-50;
+        wallH33.position.z=200;
+        wallH33.position.x=-450;
+        scene.add( wallH31,wallH32,wallH33);
+
+        var wallH41 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        var wallH42 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        var wallH43 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        wallH41.position.z=100;
+        wallH41.position.x=350;
+        wallH42.position.z=100;
+        wallH42.position.x=-150;
+        wallH43.position.z=100;
+        wallH43.position.x=-350;
+        scene.add( wallH41,wallH42,wallH43);
+
+        var wallH51 = new THREE.Mesh(geometrywall2,wallMaterialIn);
+        var wallH52 = new THREE.Mesh(geometrywall3,wallMaterialIn);
+        wallH51.position.z=0;
+        wallH51.position.x=400;
+        wallH52.position.z=0;
+        wallH52.position.x=-350;
+        scene.add( wallH51,wallH52);
+
+        var wallH61 = new THREE.Mesh(geometrywall5,wallMaterialIn);
+        wallH61.position.z=-100;
+        wallH61.position.x=150;
+        scene.add( wallH61);
+
+        var wallH71 = new THREE.Mesh(geometrywall4,wallMaterialIn);
+        wallH71.position.z=-200;
+        wallH71.position.x=300;
+        scene.add( wallH71);
+
+        var wallH81 = new THREE.Mesh(geometrywall3,wallMaterialIn);
+        var wallH82 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        var wallH83 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        wallH81.position.z=-300;
+        wallH81.position.x=250;
+        wallH82.position.z=-300;
+        wallH82.position.x=-50;
+        wallH83.position.z=-300;
+        wallH83.position.x=-350;
+        scene.add( wallH81,wallH82,wallH83);
+
+        var wallH91 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        wallH91.position.z=-400;
+        wallH91.position.x=-450;
+        scene.add( wallH91);
+
+        //vertical walls from left ro right // top to down
+        var wallV11 = new THREE.Mesh(geometrywall1,wallMaterialInVer);
+        wallV11.rotation.y = Math.PI / 2;
+        wallV11.position.x=400;
+        wallV11.position.z=150;
+        scene.add( wallV11);
+
+        var wallV21 = new THREE.Mesh(geometrywall1,wallMaterialInVer);
+        var wallV22 = new THREE.Mesh(geometrywall1,wallMaterialInVer);
+        wallV21.rotation.y = Math.PI / 2;
+        wallV21.position.x=300;
+        wallV21.position.z=50;
+        wallV22.rotation.y = Math.PI / 2;
+        wallV22.position.x=300;
+        wallV22.position.z=-350;
+        scene.add( wallV21,wallV22);
+
+        var wallV31 = new THREE.Mesh(geometrywall5,wallMaterialInVer);
+        var wallV32 = new THREE.Mesh(geometrywall1,wallMaterialInVer);
+        wallV31.rotation.y = Math.PI / 2;
+        wallV31.position.x=200;
+        wallV31.position.z=150;
+        wallV32.rotation.y = Math.PI / 2;
+        wallV32.position.x=200;
+        wallV32.position.z=-450;
+        scene.add( wallV31,wallV32);
+
+        var wallV41 = new THREE.Mesh(geometrywall3,wallMaterialInVer);
+        var wallV42 = new THREE.Mesh(geometrywall2,wallMaterialInVer);
+        wallV41.rotation.y = Math.PI / 2;
+        wallV41.position.x=100;
+        wallV41.position.z=150;
+        wallV42.rotation.y = Math.PI / 2;
+        wallV42.position.x=100;
+        wallV42.position.z=-300;
+        scene.add( wallV41,wallV42);
+
+        var wallV51 = new THREE.Mesh(geometrywall5,wallMaterialInVer);
+        var wallV52 = new THREE.Mesh(geometrywall2,wallMaterialInVer);
+        var wallV53 = new THREE.Mesh(geometrywall1,wallMaterialIn);
+        wallV51.rotation.y = Math.PI / 2;
+        wallV51.position.x=0;
+        wallV51.position.z=250;
+        wallV52.rotation.y = Math.PI / 2;
+        wallV52.position.x=0;
+        wallV52.position.z=-100;
+        wallV52.rotation.y = Math.PI / 2;
+        wallV52.position.x=0;
+        wallV52.position.z=-450;
+    //    scene.add( wallV51,wallV52,wallV53);
+
+        var wallV61 = new THREE.Mesh(geometrywall1,wallMaterialInVer);
+        var wallV62 = new THREE.Mesh(geometrywall2,wallMaterialInVer);
+        wallV61.rotation.y = Math.PI / 2;
+        wallV61.position.x=-100;
+        wallV61.position.z=50;
+        wallV62.rotation.y = Math.PI / 2;
+        wallV62.position.x=-100;
+        wallV62.position.z=-250;
+        scene.add( wallV61,wallV62);
+
+        var wallV71 = new THREE.Mesh(geometrywall3,wallMaterialInVer);
+        var wallV72 = new THREE.Mesh(geometrywall2,wallMaterialInVer);
+        wallV71.rotation.y = Math.PI / 2;
+        wallV71.position.x=-200;
+        wallV71.position.z=-50;
+        wallV72.rotation.y = Math.PI / 2;
+        wallV72.position.x=-200;
+        wallV72.position.z=-400;
+        scene.add( wallV71,wallV72);
+
+        var wallV81 = new THREE.Mesh(geometrywall3,wallMaterialInVer);
+        var wallV82 = new THREE.Mesh(geometrywall4,wallMaterialInVer);
+        wallV81.rotation.y = Math.PI / 2;
+        wallV81.position.x=-300;
+        wallV81.position.z=250;
+        wallV82.rotation.y = Math.PI / 2;
+        wallV82.position.x=-300;
+        wallV82.position.z=-200;
+        scene.add( wallV81,wallV82);
+
+        var wallV91 = new THREE.Mesh(geometrywall1,wallMaterialInVer);
+        var wallV92 = new THREE.Mesh(geometrywall1,wallMaterialInVer);
+        wallV91.rotation.y = Math.PI / 2;
+        wallV91.position.x=-400;
+        wallV91.position.z=-150;
+        wallV92.rotation.y = Math.PI / 2;
+        wallV92.position.x=-400;
+        wallV92.position.z=-450;
+        scene.add( wallV91,wallV92);
+        //add hero
+
+        ambientLight = new THREE.AmbientLight(0xffffff);
+        scene.add(ambientLight);
+
+        scene.fog = new THREE.FogExp2( 0xffffff, 0.00025 );
+
+
+                var listener = new THREE.AudioListener();
+                camera.add( listener );
+
+         audioLoader = new THREE.AudioLoader();
+
+
+                light = new THREE.DirectionalLight( 0xffffff );
+                light.position.set( 0, 0.5, 1 ).normalize();
+                scene.add( light );
+
+        //  Sphere x
+        var SpherePositionZ = Math.random() * 1000 - 450;
+        var SpherePositionX = Math.random() * 1000 - 450;
+        sphereGeometry = new THREE.SphereGeometry(20, 32, 16);
+        material_sphereX = new THREE.MeshPhongMaterial({color: 0xffaa00, shading: THREE.FlatShading, shininess: 0});
+        sphereX = new THREE.Mesh(sphereGeometry, material_sphereX);
+        sphereX.position.z=SpherePositionZ;
+        sphereX.position.z=SpherePositionX;
+        scene.add(sphereX);
+
+        soundX = new THREE.PositionalAudio(listener);
+        audioLoader.load('sound/soundx.mp3',function (buffer) {
+            soundX.setBuffer( buffer );
+            soundX.setRefDistance( 50 );
+            soundX.play();
+        });
+        sphereX.add(soundX);
+        collidableMeshList.push(wallH11);
+        collidableMeshList.push(wallH12);
+        collidableMeshList.push(wallH22);
+        collidableMeshList.push(wallH21);
+        collidableMeshList.push(wallH31);
+        collidableMeshList.push(wallH32);
+        collidableMeshList.push(wallH33);
+        collidableMeshList.push(wallH41);
+        collidableMeshList.push(wallH42);
+        collidableMeshList.push(wallH43);
+        collidableMeshList.push(wallH51);
+        collidableMeshList.push(wallH52);
+        collidableMeshList.push(wallH61);
+        collidableMeshList.push(wallH71);
+        collidableMeshList.push(wallH81);
+        collidableMeshList.push(wallH82);
+        collidableMeshList.push(wallH83);
+        collidableMeshList.push(wallH91);
+        collidableMeshList.push(wallV11);
+        collidableMeshList.push(wallV21);
+        collidableMeshList.push(wallV22);
+        collidableMeshList.push(wallV31);
+        collidableMeshList.push(wallV32);
+        collidableMeshList.push(wallV41);
+        collidableMeshList.push(wallV42);
+//        collidableMeshList.push(wallV51);
+//        collidableMeshList.push(wallV52);
+//        collidableMeshList.push(wallV53);
+        collidableMeshList.push(wallV61);
+        collidableMeshList.push(wallV62);
+        collidableMeshList.push(wallV71);
+        collidableMeshList.push(wallV71);
+        collidableMeshList.push(wallV81);
+        collidableMeshList.push(wallV82);
+        collidableMeshList.push(wallV91);
+        collidableMeshList.push(wallV92);
+
+/*
+        //  Sphere y
+        material_sphereY = new THREE.MeshPhongMaterial({color: 0xaaff00, shading: THREE.FlatShading, shininess: 0});
+        sphereY = new THREE.Mesh(sphereGeometry, material_sphereY);
+        sphereY.position.z=500;
+        scene.add(sphereY);
+
+
+        soundY = new THREE.PositionalAudio(listener);
+        audioLoader.load('sound/soundy.mp3',function (buffer) {
+
+            soundY.setBuffer( buffer );
+            soundY.setRefDistance( 15 );
+            soundY.play();
+
+        });
+        sphereY.add(soundY);
+
+
+        //  Sphere z
+        /*material_sphereZ = new THREE.MeshPhongMaterial({color: 0x00aaff, shading: THREE.FlatShading, shininess: 0});
+        sphereZ = new THREE.Mesh(sphereGeometry, material_sphereZ);
+        sphereZ.position.x=500;
+        scene.add(sphereZ);
+
+        soundZ = new THREE.PositionalAudio(listener);
+        audioLoader.load('sound/soundz.mp3',function (buffer) {
+
+            soundZ.setBuffer( buffer );
+            soundZ.setRefDistance( 15 );
+            soundZ.play();
+
+        });
+
+        sphereZ.add(soundZ);
+    */
+         heroz = new THREE.Mesh(hero,heroMaterial);
+
+        scene.add(heroz);
+        heroz.onBeforeRender = function( renderer, scene, camera, geometry, material, group ) {
+            var pos = camera.position;
+            this.position.set( pos.x, pos.y, pos.z-100);
+        };
+
+
+        renderer = new THREE.WebGLRenderer({ antialias: true});
+        renderer.setClearColor(new THREE.Color(0x000000));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+
+        container.appendChild(renderer.domElement);
+
+
+        controls = new THREE.FirstPersonControls( camera, renderer.domElement );
+
+        controls.movementSpeed = 100;
+        controls.lookSpeed = 0.05;
+        controls.noFly = true;
+        controls.lookVertical = false;
+
+
+
+        window.addEventListener('resize', onWindowResize, false);
+        window.addEventListener('keyup', onDocumentKeyUp, false);
+
+
+    }
+
+
+    var lastDirection;
+    function onDocumentKeyUp(event){
+        if (event.keyCode === 38){
+            lastDirection = 'up';
+        }
+        if (event.keyCode === 37){
+            lastDirection = 'left';
+        }
+        if (event.keyCode === 39)
+            lastDirection = 'right';
+        if (event.keyCode === 40)
+            lastDirection = 'down';
+    }
+    function onWindowResize() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        controls.handleResize();
+
+    }
+
+    function animate() {
+
+        delta = clock.getDelta();
+
+        controls.update(delta);
+
+        render();
+        update();
+        requestAnimationFrame(animate);
+
+
+    }
+    function update() {
+        var delta = clock.getDelta(); // seconds.
+        var moveDistance = 200 * delta; // 200 pixels per second
+        var rotateAngle = Math.PI / 2 * delta;   // pi/2 radians (90 degrees) per second
+
+
+        // collision detection:
+        //   determines if any of the rays from the cube's origin to each vertex
+        //		intersects any face of a mesh in the array of target meshes
+        //   for increased collision accuracy, add more vertices to the cube;
+        //		for example, new THREE.CubeGeometry( 64, 64, 64, 8, 8, 8, wireMaterial )
+        //   HOWEVER: when the origin of the ray is within the target mesh, collisions do not occur
+        var originPoint = heroz.position.clone();
+
+        var collisionResults;
+        var test = true;
+         lastCameraPosition.push(camera.position);
+        for (var vertexIndex = 0; vertexIndex < heroz.geometry.vertices.length; vertexIndex++)
+        {
+            var localVertex = heroz.geometry.vertices[vertexIndex].clone();
+            var globalVertex = localVertex.applyMatrix4( heroz.matrix );
+            var directionVector = globalVertex.sub( heroz.position );
+
+            var ray = new THREE.Raycaster( originPoint, directionVector.clone().normalize() );
+            collisionResults = ray.intersectObjects( collidableMeshList );
+            if ( collisionResults.length > 0 && collisionResults[0].distance < directionVector.length() ) {
+                console.log('hit',collisionResults);
+                camera.position.x = collisionResults[0].point.x;
+//                camera.position.y = collisionResults[0].point.y;
+                camera.position.z = collisionResults[0].point.z;
+            }
+        }
+        if ( keyboard.pressed("left")&& !test && lastDirection === 'left')
+            return;
+        if ( keyboard.pressed("right")&& !test && lastDirection === 'right')
+            return;
+        if ( keyboard.pressed("up")&& !test && lastDirection === 'up')
+            return;
+        if ( keyboard.pressed("down")&& !test && lastDirection === 'down')
+            return;
+        controls.update();
+    }
+
+
+    function render() {
+
+
+
+        renderer.render(scene, camera);
+
+    }
+
+
+</script>
+</body>
+</html>
